@@ -36,7 +36,7 @@ namespace Saas_Car_Management.Infrastructure.Repositories
             };
         }
 
-        public async Task<object> GetTenantDashboardAsync(int tenantId)
+        public async Task<object> GetTenantDashboardAsync(int tenantId, DateTime? startDate = null, DateTime? endDate = null)
         {
             var totalCars = await _context.Cars.CountAsync(c => c.TenantId == tenantId);
             var availableCars = await _context.Cars.CountAsync(c => c.TenantId == tenantId && c.Status == "Available");
@@ -59,6 +59,40 @@ namespace Saas_Car_Management.Infrastructure.Repositories
             var activeTrips = await _context.Bookings
                 .CountAsync(b => b.TenantId == tenantId && b.Status == "InProgress");
 
+            // Graph Data Metrics
+            var bookingQuery = _context.Bookings.Where(b => b.TenantId == tenantId);
+            var customerQuery = _context.Customers.Where(c => c.TenantId == tenantId);
+
+            if (startDate.HasValue)
+            {
+                var utcStartDate = DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc);
+                bookingQuery = bookingQuery.Where(b => b.BookingDate >= utcStartDate);
+                customerQuery = customerQuery.Where(c => c.CreatedAt >= utcStartDate);
+            }
+            if (endDate.HasValue)
+            {
+                var utcEndDate = DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc);
+                bookingQuery = bookingQuery.Where(b => b.BookingDate <= utcEndDate);
+                customerQuery = customerQuery.Where(c => c.CreatedAt <= utcEndDate);
+            }
+
+            var graphTotalBooking = await bookingQuery.CountAsync();
+            var graphTotalCustomer = await customerQuery.CountAsync();
+
+            var bookingIds = await bookingQuery.Select(b => b.Id).ToListAsync();
+
+            var graphVendorBooking = await _context.BookingVehicles
+                .Where(bv => bookingIds.Contains(bv.BookingId) && bv.AssignmentType == "Vendor")
+                .CountAsync();
+
+            var graphC2CBooking = await _context.BookingVehicles
+                .Where(bv => bookingIds.Contains(bv.BookingId) && bv.AssignmentType == "Marketplace")
+                .CountAsync();
+
+            var graphOwnFleetBooking = await _context.BookingVehicles
+                .Where(bv => bookingIds.Contains(bv.BookingId) && bv.AssignmentType == "Own")
+                .CountAsync();
+
             return new
             {
                 TotalCars = totalCars,
@@ -71,7 +105,12 @@ namespace Saas_Car_Management.Infrastructure.Repositories
                 Revenue = revenue,
                 PendingVendorPayments = pendingVendorPayments,
                 MarketplaceTransactions = marketplaceTransactions,
-                ActiveTrips = activeTrips
+                ActiveTrips = activeTrips,
+                GraphTotalBooking = graphTotalBooking,
+                GraphVendorBooking = graphVendorBooking,
+                GraphC2CBooking = graphC2CBooking,
+                GraphOwnFleetBooking = graphOwnFleetBooking,
+                GraphTotalCustomer = graphTotalCustomer
             };
         }
     }

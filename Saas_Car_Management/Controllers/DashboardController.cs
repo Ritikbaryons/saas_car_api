@@ -16,7 +16,7 @@ namespace Saas_Car_Management.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetDashboardData()
+        public async Task<IActionResult> GetDashboardData([FromQuery] System.DateTime? startDate = null, [FromQuery] System.DateTime? endDate = null)
         {
             if (User.IsInRole("SUPER_ADMIN"))
             {
@@ -24,7 +24,7 @@ namespace Saas_Car_Management.Controllers
                 return Ok(saData);
             }
 
-            var tenantData = await _dashboardRepository.GetTenantDashboardAsync(GetTenantId());
+            var tenantData = await _dashboardRepository.GetTenantDashboardAsync(GetTenantId(), startDate, endDate);
             return Ok(tenantData);
         }
     }

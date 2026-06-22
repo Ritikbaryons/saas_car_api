@@ -63,6 +63,13 @@ namespace Saas_Car_Management.Controllers
             return Ok(vehicles);
         }
 
+        [HttpGet("vehicles/all")]
+        public async Task<IActionResult> GetAllVendorVehicles()
+        {
+            var vehicles = await _vendorRepository.GetAllVendorVehiclesAsync(GetTenantId());
+            return Ok(vehicles);
+        }
+
         [HttpPost("vehicles")]
         public async Task<IActionResult> CreateVendorVehicle([FromBody] CreatePartnerVehicleDto dto)
         {
@@ -77,6 +84,13 @@ namespace Saas_Car_Management.Controllers
             return Ok(drivers);
         }
 
+        [HttpGet("drivers/all")]
+        public async Task<IActionResult> GetAllVendorDrivers()
+        {
+            var drivers = await _vendorRepository.GetAllVendorDriversAsync(GetTenantId());
+            return Ok(drivers);
+        }
+
         [HttpPost("drivers")]
         public async Task<IActionResult> CreateVendorDriver([FromBody] CreatePartnerDriverDto dto)
         {
@@ -85,10 +99,10 @@ namespace Saas_Car_Management.Controllers
         }
 
         [HttpGet("payments")]
-        public async Task<IActionResult> GetVendorPayments()
+        public async Task<IActionResult> GetVendorPayments([FromQuery] int page = 1, [FromQuery] int pageSize = 7)
         {
-            var payments = await _vendorRepository.GetVendorPaymentsAsync(GetTenantId());
-            return Ok(payments);
+            var result = await _vendorRepository.GetVendorPaymentsAsync(GetTenantId(), page, pageSize);
+            return Ok(result);
         }
 
         [HttpPost("payments")]

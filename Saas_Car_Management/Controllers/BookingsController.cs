@@ -23,6 +23,13 @@ namespace Saas_Car_Management.Controllers
             return Ok(bookings);
         }
 
+        [HttpGet("history")]
+        public async Task<IActionResult> GetBookingHistory([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string search = "")
+        {
+            var result = await _bookingRepository.GetBookingHistoryAsync(GetTenantId(), page, pageSize, search);
+            return Ok(result);
+        }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetBooking(int id)
         {

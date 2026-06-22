@@ -171,6 +171,7 @@ namespace Saas_Car_Management.Infrastructure.Repositories
 
                 // Create Marketplace double transaction entry
                 var commission = offer.OfferPrice * 0.05m; // 5% SaaS platform fee
+                var refId = $"BID-{offer.Id}";
 
                 // Buyer side debit
                 await _context.MarketplaceTransactions.AddAsync(new MarketplaceTransaction
@@ -179,7 +180,7 @@ namespace Saas_Car_Management.Infrastructure.Repositories
                     BuyerTenantId = tenantId,
                     SellerTenantId = offer.TenantId,
                     Amount = offer.OfferPrice,
-                    TransactionType = "Settlement",
+                    TransactionType = $"Settlement [{refId}]",
                     Status = "Pending"
                 });
 
@@ -190,7 +191,7 @@ namespace Saas_Car_Management.Infrastructure.Repositories
                     BuyerTenantId = tenantId,
                     SellerTenantId = offer.TenantId,
                     Amount = offer.OfferPrice - commission,
-                    TransactionType = "Settlement",
+                    TransactionType = $"Settlement [{refId}]",
                     Status = "Pending"
                 });
 
@@ -259,10 +260,17 @@ namespace Saas_Car_Management.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<MarketplaceTransactionDto>> GetTransactionsAsync(int tenantId)
+        public async Task<PagedMarketplaceTransactionResponseDto> GetTransactionsAsync(int tenantId, int page = 1, int pageSize = 7)
         {
-            return await _context.MarketplaceTransactions
+            var query = _context.MarketplaceTransactions
                 .Where(t => t.TenantId == tenantId)
+                .OrderByDescending(t => t.TransactionDate);
+
+            var totalCount = await query.CountAsync();
+
+            var data = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .Select(t => new MarketplaceTransactionDto
                 {
                     Id = t.Id,
@@ -276,6 +284,103 @@ namespace Saas_Car_Management.Infrastructure.Repositories
                     Status = t.Status
                 })
                 .ToListAsync();
+
+            return new PagedMarketplaceTransactionResponseDto
+            {
+                Data = data,
+                TotalCount = totalCount
+            };
+        }
+
+        public async Task<MarketplaceTransactionDto?> CreateTransactionAsync(int tenantId, CreateMarketplaceTransactionDto dto)
+        {
+            var assignment = await _context.MarketplaceAssignments
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(a => a.Id == dto.MarketplaceAssignmentId);
+
+            if (assignment == null) return null;
+
+            var originalRefId = $"BID-{assignment.MarketplaceOfferId}";
+            var originalTxType = $"Settlement [{originalRefId}]";
+
+            var existingTxs = await _context.MarketplaceTransactions
+                .IgnoreQueryFilters()
+                .Where(t => t.TransactionType == originalTxType)
+                .ToListAsync();
+
+            MarketplaceTransaction? returnTx = null;
+
+            if (existingTxs.Any())
+            {
+                foreach (var tx in existingTxs)
+                {
+                    tx.Status = "Completed";
+                    tx.TransactionDate = DateTime.UtcNow;
+
+                    if (tx.TenantId == tx.BuyerTenantId)
+                    {
+                        tx.Amount = dto.Amount;
+                    }
+                    else
+                    {
+                        var commission = dto.Amount * 0.05m;
+                        tx.Amount = dto.Amount - commission;
+                    }
+
+                    if (tx.TenantId == tenantId)
+                    {
+                        returnTx = tx;
+                    }
+                }
+                returnTx ??= existingTxs.First();
+            }
+            else
+            {
+                // Fallback if existing transactions were not found
+                var refId = $"B2B-{assignment.Id}";
+                var t1 = new MarketplaceTransaction
+                {
+                    TenantId = tenantId,
+                    BuyerTenantId = tenantId,
+                    SellerTenantId = assignment.ProviderCompanyId,
+                    Amount = dto.Amount,
+                    TransactionType = $"Settlement [{refId}]",
+                    Status = "Completed",
+                    TransactionDate = DateTime.UtcNow
+                };
+                await _context.MarketplaceTransactions.AddAsync(t1);
+
+                var t2 = new MarketplaceTransaction
+                {
+                    TenantId = assignment.ProviderCompanyId,
+                    BuyerTenantId = tenantId,
+                    SellerTenantId = assignment.ProviderCompanyId,
+                    Amount = dto.Amount - (dto.Amount * 0.05m),
+                    TransactionType = $"Settlement [{refId}]",
+                    Status = "Completed",
+                    TransactionDate = DateTime.UtcNow
+                };
+                await _context.MarketplaceTransactions.AddAsync(t2);
+
+                returnTx = t1;
+            }
+
+            assignment.SettlementStatus = "Completed";
+            
+            await _context.SaveChangesAsync();
+
+            return new MarketplaceTransactionDto
+            {
+                Id = returnTx.Id,
+                BuyerTenantId = returnTx.BuyerTenantId,
+                BuyerCompanyName = _context.Tenants.FirstOrDefault(x => x.Id == returnTx.BuyerTenantId)?.CompanyName ?? "",
+                SellerTenantId = returnTx.SellerTenantId,
+                SellerCompanyName = _context.Tenants.FirstOrDefault(x => x.Id == returnTx.SellerTenantId)?.CompanyName ?? "",
+                Amount = returnTx.Amount,
+                TransactionType = returnTx.TransactionType,
+                TransactionDate = returnTx.TransactionDate,
+                Status = returnTx.Status
+            };
         }
     }
 }

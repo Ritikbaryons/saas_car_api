@@ -14,6 +14,7 @@ namespace Saas_Car_Management.Core.DTOs
         public string Type { get; set; } = string.Empty; // Vendor, MarketplaceCompany
         public decimal Balance { get; set; }
         public bool IsActive { get; set; }
+        public string MagicToken { get; set; } = string.Empty;
     }
 
     public class CreatePartnerDto
@@ -35,7 +36,9 @@ namespace Saas_Car_Management.Core.DTOs
         public int Year { get; set; }
         public string PlateNumber { get; set; } = string.Empty;
         public string Color { get; set; } = string.Empty;
+        public string Status { get; set; } = "Available";
         public bool IsActive { get; set; }
+        public string PartnerName { get; set; } = string.Empty;
     }
 
     public class CreatePartnerVehicleDto
@@ -56,6 +59,7 @@ namespace Saas_Car_Management.Core.DTOs
         public string Phone { get; set; } = string.Empty;
         public string LicenseNumber { get; set; } = string.Empty;
         public bool IsActive { get; set; }
+        public string PartnerName { get; set; } = string.Empty;
     }
 
     public class CreatePartnerDriverDto
@@ -148,6 +152,12 @@ namespace Saas_Car_Management.Core.DTOs
         public string Notes { get; set; } = string.Empty;
     }
 
+    public class PagedVendorPaymentResponseDto
+    {
+        public IEnumerable<VendorPaymentDto> Data { get; set; } = new List<VendorPaymentDto>();
+        public int TotalCount { get; set; }
+    }
+
     public class MarketplaceTransactionDto
     {
         public int Id { get; set; }
@@ -159,5 +169,17 @@ namespace Saas_Car_Management.Core.DTOs
         public string TransactionType { get; set; } = string.Empty;
         public DateTime TransactionDate { get; set; }
         public string Status { get; set; } = string.Empty;
+    }
+
+    public class CreateMarketplaceTransactionDto
+    {
+        public int MarketplaceAssignmentId { get; set; }
+        public decimal Amount { get; set; }
+    }
+
+    public class PagedMarketplaceTransactionResponseDto
+    {
+        public IEnumerable<MarketplaceTransactionDto> Data { get; set; } = new List<MarketplaceTransactionDto>();
+        public int TotalCount { get; set; }
     }
 }

@@ -13,6 +13,7 @@ namespace Saas_Car_Management.Core.Entities
         public string Type { get; set; } = "Vendor"; // Vendor, MarketplaceCompany
         public decimal Balance { get; set; } = 0;
         public bool IsActive { get; set; } = true;
+        public string MagicToken { get; set; } = Guid.NewGuid().ToString();
     }
 
     public class PartnerVehicle : BaseEntity, IMustHaveTenant
@@ -24,6 +25,7 @@ namespace Saas_Car_Management.Core.Entities
         public int Year { get; set; }
         public string PlateNumber { get; set; } = string.Empty;
         public string Color { get; set; } = string.Empty;
+        public string Status { get; set; } = "Available"; // Available, Busy
         public bool IsActive { get; set; } = true;
 
         // Navigation

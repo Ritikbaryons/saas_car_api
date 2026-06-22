@@ -13,5 +13,6 @@ namespace Saas_Car_Management.Core.Interfaces
         Task<bool> StartBookingAsync(int id, int tenantId);
         Task<bool> CompleteBookingAsync(int id, int tenantId);
         Task<bool> CancelBookingAsync(int id, int tenantId);
+        Task<PagedBookingResponseDto> GetBookingHistoryAsync(int tenantId, int page = 1, int pageSize = 10, string search = "");
     }
 }

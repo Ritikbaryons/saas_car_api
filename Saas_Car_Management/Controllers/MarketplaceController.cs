@@ -70,10 +70,18 @@ namespace Saas_Car_Management.Controllers
         }
 
         [HttpGet("transactions")]
-        public async Task<IActionResult> GetTransactions()
+        public async Task<IActionResult> GetTransactions([FromQuery] int page = 1, [FromQuery] int pageSize = 7)
         {
-            var transactions = await _marketplaceRepository.GetTransactionsAsync(GetTenantId());
-            return Ok(transactions);
+            var result = await _marketplaceRepository.GetTransactionsAsync(GetTenantId(), page, pageSize);
+            return Ok(result);
+        }
+
+        [HttpPost("transactions")]
+        public async Task<IActionResult> CreateTransaction([FromBody] CreateMarketplaceTransactionDto dto)
+        {
+            var result = await _marketplaceRepository.CreateTransactionAsync(GetTenantId(), dto);
+            if (result == null) return BadRequest("Could not generate transaction.");
+            return Ok(result);
         }
     }
 }

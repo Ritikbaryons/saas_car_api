@@ -14,6 +14,7 @@ namespace Saas_Car_Management.Core.Interfaces
         Task<bool> AcceptOfferAsync(int offerId, int tenantId);
         Task<bool> AssignVehicleAsync(int assignmentId, int providerTenantId, AssignMarketplaceVehicleDto dto);
         Task<IEnumerable<MarketplaceAssignmentDto>> GetAssignmentsAsync(int tenantId);
-        Task<IEnumerable<MarketplaceTransactionDto>> GetTransactionsAsync(int tenantId);
+        Task<PagedMarketplaceTransactionResponseDto> GetTransactionsAsync(int tenantId, int page = 1, int pageSize = 7);
+        Task<MarketplaceTransactionDto?> CreateTransactionAsync(int tenantId, CreateMarketplaceTransactionDto dto);
     }
 }

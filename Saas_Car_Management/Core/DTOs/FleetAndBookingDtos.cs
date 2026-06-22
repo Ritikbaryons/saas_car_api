@@ -159,4 +159,10 @@ namespace Saas_Car_Management.Core.DTOs
         public int? PartnerVehicleId { get; set; }
         public int? PartnerDriverId { get; set; }
     }
+
+    public class PagedBookingResponseDto
+    {
+        public IEnumerable<BookingDto> Data { get; set; } = new List<BookingDto>();
+        public int TotalCount { get; set; }
+    }
 }

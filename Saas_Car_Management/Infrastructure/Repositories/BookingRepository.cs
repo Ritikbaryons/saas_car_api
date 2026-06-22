@@ -22,9 +22,10 @@ namespace Saas_Car_Management.Infrastructure.Repositories
         public async Task<IEnumerable<BookingDto>> GetBookingsAsync(int tenantId)
         {
             var bookings = await _context.Bookings
-                .Where(b => b.TenantId == tenantId)
+                .Where(b => b.TenantId == tenantId && b.Status != "Completed" && b.Status != "Cancelled")
                 .Include(b => b.Customer)
                 .Include(b => b.BookingVehicles)
+                .OrderByDescending(b => b.Id)
                 .ToListAsync();
 
             var dtos = new List<BookingDto>();
@@ -104,6 +105,116 @@ namespace Saas_Car_Management.Infrastructure.Repositories
             }
 
             return dtos;
+        }
+
+        public async Task<PagedBookingResponseDto> GetBookingHistoryAsync(int tenantId, int page = 1, int pageSize = 10, string search = "")
+        {
+            var query = _context.Bookings
+                .Where(b => b.TenantId == tenantId)
+                .Include(b => b.Customer)
+                .Include(b => b.BookingVehicles)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.ToLower();
+                query = query.Where(b => 
+                    (b.Customer != null && b.Customer.Name.ToLower().Contains(s)) ||
+                    (b.Notes != null && b.Notes.ToLower().Contains(s)) ||
+                    b.Id.ToString().Contains(s) ||
+                    (b.PickupLocation != null && b.PickupLocation.ToLower().Contains(s)) ||
+                    (b.DropLocation != null && b.DropLocation.ToLower().Contains(s)));
+            }
+
+            var totalCount = await query.CountAsync();
+
+            var bookings = await query
+                .OrderByDescending(b => b.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var dtos = new List<BookingDto>();
+            foreach (var b in bookings)
+            {
+                var vehicles = new List<BookingVehicleDto>();
+                foreach (var bv in b.BookingVehicles)
+                {
+                    string? carName = null;
+                    if (bv.CarId.HasValue)
+                    {
+                        var car = await _context.Cars.FindAsync(bv.CarId.Value);
+                        carName = car != null ? $"{car.Make} {car.Model}" : null;
+                    }
+
+                    string? driverName = null;
+                    if (bv.DriverId.HasValue)
+                    {
+                        var drv = await _context.Drivers.FindAsync(bv.DriverId.Value);
+                        driverName = drv != null ? $"{drv.FirstName} {drv.LastName}" : null;
+                    }
+
+                    string? partnerVehicleName = null;
+                    if (bv.PartnerVehicleId.HasValue)
+                    {
+                        var pv = await _context.PartnerVehicles.FindAsync(bv.PartnerVehicleId.Value);
+                        partnerVehicleName = pv != null ? $"{pv.Make} {pv.Model}" : null;
+                    }
+
+                    string? partnerDriverName = null;
+                    if (bv.PartnerDriverId.HasValue)
+                    {
+                        var pd = await _context.PartnerDrivers.FindAsync(bv.PartnerDriverId.Value);
+                        partnerDriverName = pd?.Name;
+                    }
+
+                    vehicles.Add(new BookingVehicleDto
+                    {
+                        Id = bv.Id,
+                        BookingId = bv.BookingId,
+                        CarId = bv.CarId,
+                        CarName = carName,
+                        DriverId = bv.DriverId,
+                        DriverName = driverName,
+                        PartnerVehicleId = bv.PartnerVehicleId,
+                        PartnerVehicleName = partnerVehicleName,
+                        PartnerDriverId = bv.PartnerDriverId,
+                        PartnerDriverName = partnerDriverName,
+                        AssignmentType = bv.AssignmentType,
+                        Status = bv.Status,
+                        ActualStart = bv.ActualStart,
+                        ActualEnd = bv.ActualEnd,
+                        Quantity = bv.Quantity,
+                        RateType = bv.RateType,
+                        BaseRate = bv.BaseRate,
+                        Distance = bv.Distance,
+                        Hours = bv.Hours,
+                        Fare = bv.Fare
+                    });
+                }
+
+                dtos.Add(new BookingDto
+                {
+                    Id = b.Id,
+                    CustomerId = b.CustomerId,
+                    CustomerName = b.Customer?.Name ?? "Unknown",
+                    BookingDate = b.BookingDate,
+                    ScheduledStart = b.ScheduledStart,
+                    ScheduledEnd = b.ScheduledEnd,
+                    Status = b.Status,
+                    TotalAmount = b.TotalAmount,
+                    Notes = b.Notes,
+                    PickupLocation = b.PickupLocation,
+                    DropLocation = b.DropLocation,
+                    BookingVehicles = vehicles
+                });
+            }
+
+            return new PagedBookingResponseDto
+            {
+                Data = dtos,
+                TotalCount = totalCount
+            };
         }
 
         public async Task<BookingDto?> GetBookingByIdAsync(int id, int tenantId)
@@ -262,31 +373,22 @@ namespace Saas_Car_Management.Infrastructure.Repositories
                     }
                     else if (v.AssignmentType == "Marketplace")
                     {
-                        if (v.MarketplaceOfferId.HasValue)
+                        // v.CarId contains the MarketplaceAssignment.Id from frontend
+                        if (v.CarId.HasValue)
                         {
-                            var offer = await _context.MarketplaceOffers
-                                .Include(o => o.MarketplaceRequest)
-                                .FirstOrDefaultAsync(o => o.Id == v.MarketplaceOfferId.Value);
-
-                            if (offer != null)
+                            var assignment = await _context.MarketplaceAssignments.FindAsync(v.CarId.Value);
+                            if (assignment != null)
                             {
-                                offer.Status = "Accepted";
-                                // Find or create assignment
-                                var assign = new MarketplaceAssignment
-                                {
-                                    TenantId = tenantId,
-                                    MarketplaceOfferId = offer.Id,
-                                    ProviderCompanyId = offer.TenantId,
-                                    Price = offer.OfferPrice,
-                                    Status = "Assigned",
-                                    SettlementStatus = "Pending"
-                                };
-                                await _context.MarketplaceAssignments.AddAsync(assign);
-                                await _context.SaveChangesAsync();
-
-                                bv.PartnerVehicleId = null; // Stored differently or custom
+                                // Mark it as completed immediately so it disappears from the dropdown
+                                assignment.Status = "Completed";
+                                
+                                // Optional: map actual car id if needed, but to avoid FK issues with cross-tenant, we leave as null
+                                // bv.CarId = assignment.CarId; 
                             }
                         }
+
+                        bv.CarId = null; // Do NOT set this to MarketplaceAssignment.Id to avoid FK violation
+                        bv.DriverId = null;
                     }
 
                     await _context.BookingVehicles.AddAsync(bv);
@@ -354,15 +456,18 @@ namespace Saas_Car_Management.Infrastructure.Repositories
                 bv.ActualEnd = DateTime.UtcNow;
 
                 // Revert own car & driver back to Available
-                if (bv.CarId.HasValue)
+                if (bv.AssignmentType == "Own")
                 {
-                    var car = await _context.Cars.FindAsync(bv.CarId.Value);
-                    if (car != null) car.Status = "Available";
-                }
-                if (bv.DriverId.HasValue)
-                {
-                    var driver = await _context.Drivers.FindAsync(bv.DriverId.Value);
-                    if (driver != null) driver.Status = "Available";
+                    if (bv.CarId.HasValue)
+                    {
+                        var car = await _context.Cars.FindAsync(bv.CarId.Value);
+                        if (car != null) car.Status = "Available";
+                    }
+                    if (bv.DriverId.HasValue)
+                    {
+                        var driver = await _context.Drivers.FindAsync(bv.DriverId.Value);
+                        if (driver != null) driver.Status = "Available";
+                    }
                 }
             }
 
