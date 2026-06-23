@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Saas_Car_Management.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Saas_Car_Management.Infrastructure.Persistence;
 namespace Saas_Car_Management.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260622170244_AddDutyTypesTable")]
+    partial class AddDutyTypesTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -80,12 +83,6 @@ namespace Saas_Car_Management.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<decimal?>("ActualDistance")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal?>("ActualHours")
-                        .HasColumnType("numeric");
-
                     b.Property<DateTime>("BookingDate")
                         .HasColumnType("timestamp with time zone");
 
@@ -101,15 +98,6 @@ namespace Saas_Car_Management.Migrations
                     b.Property<string>("DropLocation")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<int?>("DutyTypeId")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal>("ExtraHourCharge")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("ExtraKmCharge")
-                        .HasColumnType("numeric");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
@@ -144,8 +132,6 @@ namespace Saas_Car_Management.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CustomerId");
-
-                    b.HasIndex("DutyTypeId");
 
                     b.ToTable("Bookings");
                 });
@@ -515,12 +501,6 @@ namespace Saas_Car_Management.Migrations
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal>("ExtraHourRate")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("ExtraKmRate")
-                        .HasColumnType("numeric");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
@@ -1723,13 +1703,7 @@ namespace Saas_Car_Management.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Saas_Car_Management.Core.Entities.DutyType", "DutyType")
-                        .WithMany()
-                        .HasForeignKey("DutyTypeId");
-
                     b.Navigation("Customer");
-
-                    b.Navigation("DutyType");
                 });
 
             modelBuilder.Entity("Saas_Car_Management.Core.Entities.BookingVehicle", b =>

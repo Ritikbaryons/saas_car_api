@@ -15,9 +15,16 @@ namespace Saas_Car_Management.Core.Entities
         public string Notes { get; set; } = string.Empty;
         public string PickupLocation { get; set; } = string.Empty;
         public string DropLocation { get; set; } = string.Empty;
+        public int? DutyTypeId { get; set; }
+        
+        public decimal? ActualDistance { get; set; }
+        public decimal? ActualHours { get; set; }
+        public decimal ExtraKmCharge { get; set; }
+        public decimal ExtraHourCharge { get; set; }
 
         // Navigation
         public Customer Customer { get; set; } = null!;
+        public DutyType? DutyType { get; set; }
         public ICollection<BookingVehicle> BookingVehicles { get; set; } = new List<BookingVehicle>();
     }
 

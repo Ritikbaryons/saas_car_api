@@ -92,6 +92,12 @@ namespace Saas_Car_Management.Core.DTOs
         public string Notes { get; set; } = string.Empty;
         public string PickupLocation { get; set; } = string.Empty;
         public string DropLocation { get; set; } = string.Empty;
+        public int? DutyTypeId { get; set; }
+        public string? DutyTypeName { get; set; }
+        public decimal? ActualDistance { get; set; }
+        public decimal? ActualHours { get; set; }
+        public decimal ExtraKmCharge { get; set; }
+        public decimal ExtraHourCharge { get; set; }
         public List<BookingVehicleDto> BookingVehicles { get; set; } = new();
     }
 
@@ -128,6 +134,7 @@ namespace Saas_Car_Management.Core.DTOs
         public string Notes { get; set; } = string.Empty;
         public string PickupLocation { get; set; } = string.Empty;
         public string DropLocation { get; set; } = string.Empty;
+        public int? DutyTypeId { get; set; }
         public List<CreateBookingVehicleRequestDto> Vehicles { get; set; } = new();
     }
 
@@ -164,5 +171,11 @@ namespace Saas_Car_Management.Core.DTOs
     {
         public IEnumerable<BookingDto> Data { get; set; } = new List<BookingDto>();
         public int TotalCount { get; set; }
+    }
+
+    public class CompleteBookingDto
+    {
+        public decimal? ActualDistance { get; set; }
+        public decimal? ActualHours { get; set; }
     }
 }

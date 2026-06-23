@@ -55,9 +55,9 @@ namespace Saas_Car_Management.Controllers
         }
 
         [HttpPost("{id}/complete")]
-        public async Task<IActionResult> CompleteBooking(int id)
+        public async Task<IActionResult> CompleteBooking(int id, [FromBody] CompleteBookingDto dto = null)
         {
-            var success = await _bookingRepository.CompleteBookingAsync(id, GetTenantId());
+            var success = await _bookingRepository.CompleteBookingAsync(id, GetTenantId(), dto);
             if (!success) return NotFound();
             return Ok(new { message = "Booking marked as completed." });
         }

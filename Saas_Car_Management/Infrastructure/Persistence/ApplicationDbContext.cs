@@ -43,6 +43,7 @@ namespace Saas_Car_Management.Infrastructure.Persistence
         public DbSet<Driver> Drivers { get; set; } = null!;
         public DbSet<DriverVehicleAssignment> DriverVehicleAssignments { get; set; } = null!;
         public DbSet<Booking> Bookings { get; set; } = null!;
+        public DbSet<DutyType> DutyTypes { get; set; } = null!;
         public DbSet<BookingVehicle> BookingVehicles { get; set; } = null!;
         public DbSet<RideTracking> RideTrackings { get; set; } = null!;
         public DbSet<Partner> Partners { get; set; } = null!;

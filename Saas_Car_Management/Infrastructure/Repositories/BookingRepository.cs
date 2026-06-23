@@ -24,6 +24,7 @@ namespace Saas_Car_Management.Infrastructure.Repositories
             var bookings = await _context.Bookings
                 .Where(b => b.TenantId == tenantId && b.Status != "Completed" && b.Status != "Cancelled")
                 .Include(b => b.Customer)
+                .Include(b => b.DutyType)
                 .Include(b => b.BookingVehicles)
                 .OrderByDescending(b => b.Id)
                 .ToListAsync();
@@ -92,6 +93,12 @@ namespace Saas_Car_Management.Infrastructure.Repositories
                     Id = b.Id,
                     CustomerId = b.CustomerId,
                     CustomerName = b.Customer?.Name ?? "Unknown",
+                    DutyTypeId = b.DutyTypeId,
+                    DutyTypeName = b.DutyType?.Name,
+                    ActualDistance = b.ActualDistance,
+                    ActualHours = b.ActualHours,
+                    ExtraKmCharge = b.ExtraKmCharge,
+                    ExtraHourCharge = b.ExtraHourCharge,
                     BookingDate = b.BookingDate,
                     ScheduledStart = b.ScheduledStart,
                     ScheduledEnd = b.ScheduledEnd,
@@ -112,6 +119,7 @@ namespace Saas_Car_Management.Infrastructure.Repositories
             var query = _context.Bookings
                 .Where(b => b.TenantId == tenantId)
                 .Include(b => b.Customer)
+                .Include(b => b.DutyType)
                 .Include(b => b.BookingVehicles)
                 .AsQueryable();
 
@@ -198,6 +206,12 @@ namespace Saas_Car_Management.Infrastructure.Repositories
                     Id = b.Id,
                     CustomerId = b.CustomerId,
                     CustomerName = b.Customer?.Name ?? "Unknown",
+                    DutyTypeId = b.DutyTypeId,
+                    DutyTypeName = b.DutyType?.Name,
+                    ActualDistance = b.ActualDistance,
+                    ActualHours = b.ActualHours,
+                    ExtraKmCharge = b.ExtraKmCharge,
+                    ExtraHourCharge = b.ExtraHourCharge,
                     BookingDate = b.BookingDate,
                     ScheduledStart = b.ScheduledStart,
                     ScheduledEnd = b.ScheduledEnd,
@@ -222,6 +236,7 @@ namespace Saas_Car_Management.Infrastructure.Repositories
             var b = await _context.Bookings
                 .Where(x => x.Id == id && x.TenantId == tenantId)
                 .Include(x => x.Customer)
+                .Include(x => x.DutyType)
                 .Include(x => x.BookingVehicles)
                 .FirstOrDefaultAsync();
 
@@ -288,6 +303,12 @@ namespace Saas_Car_Management.Infrastructure.Repositories
                 Id = b.Id,
                 CustomerId = b.CustomerId,
                 CustomerName = b.Customer?.Name ?? "Unknown",
+                DutyTypeId = b.DutyTypeId,
+                DutyTypeName = b.DutyType?.Name,
+                ActualDistance = b.ActualDistance,
+                ActualHours = b.ActualHours,
+                ExtraKmCharge = b.ExtraKmCharge,
+                ExtraHourCharge = b.ExtraHourCharge,
                 BookingDate = b.BookingDate,
                 ScheduledStart = b.ScheduledStart,
                 ScheduledEnd = b.ScheduledEnd,
@@ -309,6 +330,7 @@ namespace Saas_Car_Management.Infrastructure.Repositories
                 {
                     TenantId = tenantId,
                     CustomerId = dto.CustomerId,
+                    DutyTypeId = dto.DutyTypeId,
                     ScheduledStart = dto.ScheduledStart.ToUniversalTime(),
                     ScheduledEnd = dto.ScheduledEnd.ToUniversalTime(),
                     TotalAmount = dto.TotalAmount,
@@ -441,15 +463,43 @@ namespace Saas_Car_Management.Infrastructure.Repositories
             return true;
         }
 
-        public async Task<bool> CompleteBookingAsync(int id, int tenantId)
+        public async Task<bool> CompleteBookingAsync(int id, int tenantId, CompleteBookingDto dto = null)
         {
             var b = await _context.Bookings
+                .Include(x => x.DutyType)
                 .Include(x => x.BookingVehicles)
                 .FirstOrDefaultAsync(x => x.Id == id && x.TenantId == tenantId);
 
             if (b == null) return false;
 
             b.Status = "Completed";
+            
+            decimal extraCharge = 0;
+            decimal kmCharge = 0;
+            decimal hrCharge = 0;
+
+            if (dto != null)
+            {
+                b.ActualDistance = dto.ActualDistance;
+                b.ActualHours = dto.ActualHours;
+
+                if (b.DutyType != null)
+                {
+                    if (dto.ActualDistance.HasValue && dto.ActualDistance.Value > b.DutyType.MaxKilometers)
+                    {
+                        kmCharge = (dto.ActualDistance.Value - b.DutyType.MaxKilometers) * b.DutyType.ExtraKmRate;
+                    }
+                    if (dto.ActualHours.HasValue && dto.ActualHours.Value > b.DutyType.MaxHours)
+                    {
+                        hrCharge = (dto.ActualHours.Value - b.DutyType.MaxHours) * b.DutyType.ExtraHourRate;
+                    }
+                }
+            }
+
+            b.ExtraKmCharge = kmCharge;
+            b.ExtraHourCharge = hrCharge;
+            extraCharge = kmCharge + hrCharge;
+
             foreach (var bv in b.BookingVehicles)
             {
                 bv.Status = "Completed";
@@ -469,6 +519,17 @@ namespace Saas_Car_Management.Infrastructure.Repositories
                         if (driver != null) driver.Status = "Available";
                     }
                 }
+            }
+
+            if (extraCharge > 0)
+            {
+                var invoice = await _context.Invoices.FirstOrDefaultAsync(i => i.BookingId == b.Id);
+                if (invoice != null)
+                {
+                    invoice.TotalAmount += extraCharge;
+                    invoice.TaxAmount = invoice.TotalAmount * 0.15m; // Update tax
+                }
+                b.TotalAmount += extraCharge;
             }
 
             await _context.SaveChangesAsync();

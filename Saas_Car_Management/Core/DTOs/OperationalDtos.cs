@@ -62,6 +62,15 @@ namespace Saas_Car_Management.Core.DTOs
         public int? CarId { get; set; }
     }
 
+    public class UpdateExpenseDto
+    {
+        public string Category { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public DateTime ExpenseDate { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public int? CarId { get; set; }
+    }
+
     public class MaintenanceDto
     {
         public int Id { get; set; }

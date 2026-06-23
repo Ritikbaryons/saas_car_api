@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Saas_Car_Management.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Saas_Car_Management.Infrastructure.Persistence;
 namespace Saas_Car_Management.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260622174203_AddDutyTypeExtraRates")]
+    partial class AddDutyTypeExtraRates
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -80,12 +83,6 @@ namespace Saas_Car_Management.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<decimal?>("ActualDistance")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal?>("ActualHours")
-                        .HasColumnType("numeric");
-
                     b.Property<DateTime>("BookingDate")
                         .HasColumnType("timestamp with time zone");
 
@@ -104,12 +101,6 @@ namespace Saas_Car_Management.Migrations
 
                     b.Property<int?>("DutyTypeId")
                         .HasColumnType("integer");
-
-                    b.Property<decimal>("ExtraHourCharge")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("ExtraKmCharge")
-                        .HasColumnType("numeric");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
