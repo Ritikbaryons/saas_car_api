@@ -43,6 +43,8 @@ builder.Services.AddScoped<IMarketplaceRepository, MarketplaceRepository>();
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IReportRepository, ReportRepository>();
 builder.Services.AddScoped<IDutyTypeRepository, DutyTypeRepository>();
+builder.Services.AddScoped<IDriverPortalRepository, DriverPortalRepository>();
+builder.Services.AddScoped<IDriverAppRepository, DriverAppRepository>();
 
 // 4. Configure JWT Authentication
 var jwtSecret = builder.Configuration["JWT:Secret"] ?? "DefaultSuperSecretKeyWithAtLeast32CharactersLong!";

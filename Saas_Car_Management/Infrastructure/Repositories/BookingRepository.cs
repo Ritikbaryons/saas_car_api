@@ -84,7 +84,8 @@ namespace Saas_Car_Management.Infrastructure.Repositories
                         BaseRate = bv.BaseRate,
                         Distance = bv.Distance,
                         Hours = bv.Hours,
-                        Fare = bv.Fare
+                        Fare = bv.Fare,
+                        MagicToken = bv.MagicToken
                     });
                 }
 
@@ -197,7 +198,8 @@ namespace Saas_Car_Management.Infrastructure.Repositories
                         BaseRate = bv.BaseRate,
                         Distance = bv.Distance,
                         Hours = bv.Hours,
-                        Fare = bv.Fare
+                        Fare = bv.Fare,
+                        MagicToken = bv.MagicToken
                     });
                 }
 
@@ -294,7 +296,8 @@ namespace Saas_Car_Management.Infrastructure.Repositories
                     BaseRate = bv.BaseRate,
                     Distance = bv.Distance,
                     Hours = bv.Hours,
-                    Fare = bv.Fare
+                    Fare = bv.Fare,
+                    MagicToken = bv.MagicToken
                 });
             }
 

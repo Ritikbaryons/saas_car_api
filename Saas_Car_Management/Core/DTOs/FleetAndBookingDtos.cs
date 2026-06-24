@@ -123,6 +123,7 @@ namespace Saas_Car_Management.Core.DTOs
         public decimal? Distance { get; set; }
         public decimal? Hours { get; set; }
         public decimal Fare { get; set; }
+        public string? MagicToken { get; set; }
     }
 
     public class CreateBookingDto
@@ -177,5 +178,43 @@ namespace Saas_Car_Management.Core.DTOs
     {
         public decimal? ActualDistance { get; set; }
         public decimal? ActualHours { get; set; }
+    }
+
+    public class DriverAppHomeDto
+    {
+        public int ActiveTrips { get; set; }
+        public int CompletedTrips { get; set; }
+        public bool IsCheckedIn { get; set; }
+        public bool IsCheckedOut { get; set; }
+    }
+
+    public class DriverAppLiveRideDto
+    {
+        public int BookingId { get; set; }
+        public string CustomerName { get; set; } = string.Empty;
+        public string CustomerPhone { get; set; } = string.Empty;
+        public string Pickup { get; set; } = string.Empty;
+        public string Drop { get; set; } = string.Empty;
+        public DateTime ScheduledStart { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public string CarDetails { get; set; } = string.Empty;
+        public int BookingVehicleId { get; set; }
+        public string? MagicToken { get; set; }
+    }
+
+    public class DriverAppHistoryDto
+    {
+        public int BookingId { get; set; }
+        public string Pickup { get; set; } = string.Empty;
+        public string Drop { get; set; } = string.Empty;
+        public DateTime Date { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public decimal Fare { get; set; }
+    }
+
+    public class DriverPunchResultDto
+    {
+        public string Message { get; set; } = string.Empty;
+        public TimeSpan Time { get; set; }
     }
 }

@@ -61,6 +61,8 @@ namespace Saas_Car_Management.Core.Entities
         // These can reference PartnerVehicle / PartnerDriver
         public PartnerVehicle? PartnerVehicle { get; set; }
         public PartnerDriver? PartnerDriver { get; set; }
+
+        public string? MagicToken { get; set; } = Guid.NewGuid().ToString();
     }
 
     public class RideTracking : BaseEntity, IMustHaveTenant
