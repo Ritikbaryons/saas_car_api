@@ -24,7 +24,8 @@ namespace Saas_Car_Management.Infrastructure.Repositories
 
         public async Task<TokenResponseDto?> LoginAsync(LoginDto dto)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email && u.IsActive);
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == dto.Email && u.IsActive);
             if (user == null || user.PasswordHash != dto.Password)
             {
                 return null;
@@ -59,6 +60,8 @@ namespace Saas_Car_Management.Infrastructure.Repositories
             await _context.RefreshTokens.AddAsync(refreshToken);
             await _context.SaveChangesAsync();
 
+            var tenant = user.TenantId.HasValue ? await _context.Tenants.FindAsync(user.TenantId.Value) : null;
+
             return new TokenResponseDto
             {
                 AccessToken = accessToken,
@@ -66,6 +69,7 @@ namespace Saas_Car_Management.Infrastructure.Repositories
                 Email = user.Email,
                 Role = roleCode,
                 TenantId = user.TenantId,
+                CompanyName = tenant?.CompanyName,
                 Permissions = permissions
             };
         }
@@ -165,7 +169,7 @@ namespace Saas_Car_Management.Infrastructure.Repositories
             var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!int.TryParse(userIdClaim, out var userId)) return null;
 
-            var user = await _context.Users.FindAsync(userId);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
             if (user == null) return null;
 
             var storedRefreshToken = await _context.RefreshTokens
@@ -199,6 +203,8 @@ namespace Saas_Car_Management.Infrastructure.Repositories
             await _context.RefreshTokens.AddAsync(newRefreshToken);
             await _context.SaveChangesAsync();
 
+            var tenant = user.TenantId.HasValue ? await _context.Tenants.FindAsync(user.TenantId.Value) : null;
+
             return new TokenResponseDto
             {
                 AccessToken = newAccessToken,
@@ -206,6 +212,7 @@ namespace Saas_Car_Management.Infrastructure.Repositories
                 Email = user.Email,
                 Role = roleCode,
                 TenantId = user.TenantId,
+                CompanyName = tenant?.CompanyName,
                 Permissions = permissions
             };
         }

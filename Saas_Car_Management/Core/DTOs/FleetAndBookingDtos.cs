@@ -186,6 +186,7 @@ namespace Saas_Car_Management.Core.DTOs
         public int CompletedTrips { get; set; }
         public bool IsCheckedIn { get; set; }
         public bool IsCheckedOut { get; set; }
+        public IEnumerable<DriverAppLiveRideDto> UpcomingRides { get; set; } = new List<DriverAppLiveRideDto>();
     }
 
     public class DriverAppLiveRideDto

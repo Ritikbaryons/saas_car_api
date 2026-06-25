@@ -46,6 +46,9 @@ namespace Saas_Car_Management.Core.Entities
         public DateTime? ActualStart { get; set; }
         public DateTime? ActualEnd { get; set; }
         
+        public int? StartOdometer { get; set; }
+        public int? EndOdometer { get; set; }
+        
         public int Quantity { get; set; } = 1;
         public string RateType { get; set; } = "Fixed"; // Fixed, PerKM, Hourly
         public decimal BaseRate { get; set; }

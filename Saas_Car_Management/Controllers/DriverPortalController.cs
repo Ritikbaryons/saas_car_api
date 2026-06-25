@@ -23,12 +23,25 @@ namespace Saas_Car_Management.Controllers
             return Ok(trip);
         }
 
-        [HttpPost("{token}/start")]
-        public async Task<IActionResult> StartTrip(string token)
+        public class OdometerRequest
         {
-            var success = await _repository.StartTripAsync(token);
+            public int Odometer { get; set; }
+        }
+
+        [HttpPost("{token}/start")]
+        public async Task<IActionResult> StartTrip(string token, [FromBody] OdometerRequest req)
+        {
+            var success = await _repository.StartTripAsync(token, req.Odometer);
             if (!success) return BadRequest("Could not start trip. Invalid token or booking already started.");
             return Ok(new { message = "Trip started successfully." });
+        }
+
+        [HttpPost("{token}/complete")]
+        public async Task<IActionResult> CompleteTrip(string token, [FromBody] OdometerRequest req)
+        {
+            var success = await _repository.CompleteTripAsync(token, req.Odometer);
+            if (!success) return BadRequest("Could not complete trip. Invalid token or booking not active.");
+            return Ok(new { message = "Trip completed successfully." });
         }
     }
 }

@@ -49,7 +49,7 @@ namespace Saas_Car_Management.Infrastructure.Repositories
             };
         }
 
-        public async Task<bool> StartTripAsync(string token)
+        public async Task<bool> StartTripAsync(string token, int startOdometer)
         {
             var bv = await _context.BookingVehicles
                 .IgnoreQueryFilters()
@@ -60,7 +60,101 @@ namespace Saas_Car_Management.Infrastructure.Repositories
 
             bv.Status = "Active";
             bv.ActualStart = DateTime.UtcNow;
+            bv.StartOdometer = startOdometer;
             bv.Booking.Status = "InProgress";
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> CompleteTripAsync(string token, int endOdometer)
+        {
+            var bv = await _context.BookingVehicles
+                .IgnoreQueryFilters()
+                .Include(b => b.Booking)
+                    .ThenInclude(b => b.DutyType)
+                .Include(b => b.Booking)
+                    .ThenInclude(b => b.BookingVehicles)
+                .FirstOrDefaultAsync(b => b.MagicToken == token);
+
+            if (bv == null || bv.Booking == null) return false;
+
+            bv.Status = "Completed";
+            bv.ActualEnd = DateTime.UtcNow;
+            bv.EndOdometer = endOdometer;
+            
+            decimal calculatedDistance = 0;
+            if (bv.StartOdometer.HasValue && endOdometer >= bv.StartOdometer.Value)
+            {
+                calculatedDistance = endOdometer - bv.StartOdometer.Value;
+                bv.Distance = calculatedDistance;
+            }
+            
+            decimal calculatedHours = 0;
+            if (bv.ActualStart.HasValue)
+            {
+                calculatedHours = (decimal)(bv.ActualEnd.Value - bv.ActualStart.Value).TotalHours;
+                bv.Hours = calculatedHours;
+            }
+
+            // Accumulate distance and hours to the main booking object
+            bv.Booking.ActualDistance = (bv.Booking.ActualDistance ?? 0) + calculatedDistance;
+            bv.Booking.ActualHours = (bv.Booking.ActualHours ?? 0) + calculatedHours;
+
+            // Revert own car & driver back to Available
+            if (bv.AssignmentType == "Own")
+            {
+                if (bv.CarId.HasValue)
+                {
+                    var car = await _context.Cars.FindAsync(bv.CarId.Value);
+                    if (car != null) car.Status = "Available";
+                }
+                if (bv.DriverId.HasValue)
+                {
+                    var driver = await _context.Drivers.FindAsync(bv.DriverId.Value);
+                    if (driver != null) driver.Status = "Available";
+                }
+            }
+
+            // CHECK IF ALL VEHICLES ARE COMPLETED OR CANCELLED
+            bool allCompleted = bv.Booking.BookingVehicles.All(v => v.Status == "Completed" || v.Status == "Cancelled");
+
+            if (allCompleted)
+            {
+                bv.Booking.Status = "Completed";
+
+                // Calculate extra charges if duty type exists based on total accumulated distance/hours
+                decimal extraCharge = 0;
+                decimal kmCharge = 0;
+                decimal hrCharge = 0;
+
+                if (bv.Booking.DutyType != null)
+                {
+                    if (bv.Booking.ActualDistance.Value > bv.Booking.DutyType.MaxKilometers)
+                    {
+                        kmCharge = (bv.Booking.ActualDistance.Value - bv.Booking.DutyType.MaxKilometers) * bv.Booking.DutyType.ExtraKmRate;
+                    }
+                    if (bv.Booking.ActualHours.Value > bv.Booking.DutyType.MaxHours)
+                    {
+                        hrCharge = (bv.Booking.ActualHours.Value - bv.Booking.DutyType.MaxHours) * bv.Booking.DutyType.ExtraHourRate;
+                    }
+                }
+
+                bv.Booking.ExtraKmCharge = kmCharge;
+                bv.Booking.ExtraHourCharge = hrCharge;
+                extraCharge = kmCharge + hrCharge;
+
+                if (extraCharge > 0)
+                {
+                    var invoice = await _context.Invoices.IgnoreQueryFilters().FirstOrDefaultAsync(i => i.BookingId == bv.BookingId);
+                    if (invoice != null)
+                    {
+                        invoice.TotalAmount += extraCharge;
+                        invoice.TaxAmount = invoice.TotalAmount * 0.15m;
+                    }
+                    bv.Booking.TotalAmount += extraCharge;
+                }
+            }
 
             await _context.SaveChangesAsync();
             return true;

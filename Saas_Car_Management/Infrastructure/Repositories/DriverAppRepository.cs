@@ -43,12 +43,33 @@ namespace Saas_Car_Management.Infrastructure.Repositories
             var attendance = await _context.DriverAttendances
                 .FirstOrDefaultAsync(a => a.DriverId == driverId && a.Date.Date == today);
 
+            var upcomingRides = await _context.BookingVehicles
+                .Include(bv => bv.Booking)
+                    .ThenInclude(b => b.Customer)
+                .Include(bv => bv.Car)
+                .Where(bv => bv.DriverId == driverId && bv.Status == "Assigned")
+                .Select(bv => new DriverAppLiveRideDto
+                {
+                    BookingId = bv.BookingId,
+                    CustomerName = bv.Booking.Customer != null ? bv.Booking.Customer.Name : "Unknown",
+                    CustomerPhone = bv.Booking.Customer != null ? bv.Booking.Customer.Phone : "Unknown",
+                    Pickup = bv.Booking.PickupLocation,
+                    Drop = bv.Booking.DropLocation,
+                    ScheduledStart = bv.Booking.ScheduledStart,
+                    Status = bv.Status,
+                    CarDetails = bv.Car != null ? $"{bv.Car.Make} {bv.Car.Model}" : "Assigned Car",
+                    BookingVehicleId = bv.Id,
+                    MagicToken = bv.MagicToken
+                })
+                .ToListAsync();
+
             return new DriverAppHomeDto
             {
                 ActiveTrips = activeTripsCount,
                 CompletedTrips = completedTripsCount,
                 IsCheckedIn = attendance != null && attendance.CheckInTime != null,
-                IsCheckedOut = attendance != null && attendance.CheckOutTime != null
+                IsCheckedOut = attendance != null && attendance.CheckOutTime != null,
+                UpcomingRides = upcomingRides
             };
         }
 
@@ -61,7 +82,7 @@ namespace Saas_Car_Management.Infrastructure.Repositories
                 .Include(bv => bv.Booking)
                     .ThenInclude(b => b.Customer)
                 .Include(bv => bv.Car)
-                .Where(bv => bv.DriverId == driverId && (bv.Status == "Assigned" || bv.Status == "Active" || bv.Status == "InProgress"))
+                .Where(bv => bv.DriverId == driverId && (bv.Status == "Active" || bv.Status == "InProgress"))
                 .Select(bv => new DriverAppLiveRideDto
                 {
                     BookingId = bv.BookingId,
