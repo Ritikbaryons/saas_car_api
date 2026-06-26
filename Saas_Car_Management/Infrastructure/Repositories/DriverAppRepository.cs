@@ -158,5 +158,129 @@ namespace Saas_Car_Management.Infrastructure.Repositories
 
             return new DriverPunchResultDto { Message = "Already punched out for today.", Time = currentTime };
         }
+
+        public async Task<DriverProfileDto?> GetProfileAsync(int userId)
+        {
+            var driver = await _context.Drivers
+                .Include(d => d.User)
+                .FirstOrDefaultAsync(d => d.UserId == userId);
+
+            if (driver == null) return null;
+
+            var assignment = await _context.DriverVehicleAssignments
+                .Include(a => a.Car)
+                .Where(a => a.DriverId == driver.Id && a.ReleasedAt == null)
+                .FirstOrDefaultAsync();
+
+            return new DriverProfileDto
+            {
+                Id = driver.Id,
+                FirstName = driver.FirstName,
+                LastName = driver.LastName,
+                Email = driver.Email,
+                Phone = driver.Phone,
+                LicenseNumber = driver.LicenseNumber,
+                LicenseExpiry = driver.LicenseExpiry,
+                VehicleNumber = assignment?.Car?.PlateNumber ?? "Not Assigned",
+                VehicleModel = assignment?.Car != null ? $"{assignment.Car.Make} {assignment.Car.Model}" : "N/A"
+            };
+        }
+
+        public async Task<bool> UpdateProfileAsync(int userId, UpdateDriverProfileDto dto)
+        {
+            var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserId == userId);
+            if (driver == null) return false;
+
+            driver.FirstName = dto.FirstName;
+            driver.LastName = dto.LastName;
+            driver.Phone = dto.Phone;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> StartTripAsync(int userId, int bookingVehicleId)
+        {
+            var driverId = await GetDriverIdAsync(userId);
+            if (driverId == null) return false;
+
+            var bookingVehicle = await _context.BookingVehicles
+                .FirstOrDefaultAsync(bv => bv.Id == bookingVehicleId && bv.DriverId == driverId);
+
+            if (bookingVehicle == null || bookingVehicle.Status != "Assigned") return false;
+
+            bookingVehicle.Status = "InProgress";
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> EndTripAsync(int userId, int bookingVehicleId, decimal endOdo, decimal tolls)
+        {
+            var driverId = await GetDriverIdAsync(userId);
+            if (driverId == null) return false;
+
+            var bookingVehicle = await _context.BookingVehicles
+                .FirstOrDefaultAsync(bv => bv.Id == bookingVehicleId && bv.DriverId == driverId);
+
+            if (bookingVehicle == null || bookingVehicle.Status != "InProgress") return false;
+
+            bookingVehicle.Status = "Completed";
+            // Update ODO or other fare details if needed on bookingVehicle/Booking
+            
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<DriverAttendanceSummaryDto?> GetAttendanceHistoryAsync(int userId)
+        {
+            var driverId = await GetDriverIdAsync(userId);
+            if (driverId == null) return null;
+
+            var currentMonth = DateTime.UtcNow.Month;
+            var currentYear = DateTime.UtcNow.Year;
+
+            var records = await _context.DriverAttendances
+                .Where(a => a.DriverId == driverId && a.Date.Month == currentMonth && a.Date.Year == currentYear)
+                .OrderByDescending(a => a.Date)
+                .ToListAsync();
+
+            var recordDtos = new List<DriverAttendanceRecordDto>();
+            int totalMinutes = 0;
+
+            foreach (var r in records)
+            {
+                string workingHoursStr = "0h 0m";
+                if (r.CheckInTime.HasValue && r.CheckOutTime.HasValue)
+                {
+                    var duration = r.CheckOutTime.Value - r.CheckInTime.Value;
+                    totalMinutes += (int)duration.TotalMinutes;
+                    workingHoursStr = $"{(int)duration.TotalHours}h {duration.Minutes}m";
+                }
+
+                recordDtos.Add(new DriverAttendanceRecordDto
+                {
+                    Id = r.Id,
+                    Date = r.Date,
+                    Status = r.Status,
+                    CheckInTime = r.CheckInTime,
+                    CheckOutTime = r.CheckOutTime,
+                    WorkingHours = workingHoursStr
+                });
+            }
+
+            int presentDays = records.Count(r => r.Status == "Present");
+            
+            // Simple absent calculation: days passed in month - present days (excluding weekends if you want, but for simplicity let's do days passed)
+            int daysPassedInMonth = DateTime.UtcNow.Day;
+            int absentDays = Math.Max(0, daysPassedInMonth - presentDays);
+
+            return new DriverAttendanceSummaryDto
+            {
+                PresentDays = presentDays,
+                AbsentDays = absentDays,
+                TotalHours = totalMinutes / 60,
+                Records = recordDtos
+            };
+        }
     }
 }
