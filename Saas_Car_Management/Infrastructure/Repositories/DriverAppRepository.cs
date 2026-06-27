@@ -82,7 +82,7 @@ namespace Saas_Car_Management.Infrastructure.Repositories
                 .Include(bv => bv.Booking)
                     .ThenInclude(b => b.Customer)
                 .Include(bv => bv.Car)
-                .Where(bv => bv.DriverId == driverId && (bv.Status == "Active" || bv.Status == "InProgress"))
+                .Where(bv => bv.DriverId == driverId && (bv.Status == "Assigned" || bv.Status == "Active" || bv.Status == "InProgress"))
                 .Select(bv => new DriverAppLiveRideDto
                 {
                     BookingId = bv.BookingId,
@@ -108,7 +108,7 @@ namespace Saas_Car_Management.Infrastructure.Repositories
 
             var history = await _context.BookingVehicles
                 .Include(bv => bv.Booking)
-                .Where(bv => bv.DriverId == driverId && (bv.Status == "Completed" || bv.Status == "Cancelled"))
+                .Where(bv => bv.DriverId == driverId)
                 .OrderByDescending(bv => bv.Booking.ScheduledStart)
                 .Select(bv => new DriverAppHistoryDto
                 {
@@ -210,6 +210,13 @@ namespace Saas_Car_Management.Infrastructure.Repositories
             if (bookingVehicle == null || bookingVehicle.Status != "Assigned") return false;
 
             bookingVehicle.Status = "InProgress";
+            
+            var booking = await _context.Bookings.FindAsync(bookingVehicle.BookingId);
+            if (booking != null && booking.Status == "Assigned")
+            {
+                booking.Status = "InProgress";
+            }
+
             await _context.SaveChangesAsync();
             return true;
         }
@@ -222,9 +229,40 @@ namespace Saas_Car_Management.Infrastructure.Repositories
             var bookingVehicle = await _context.BookingVehicles
                 .FirstOrDefaultAsync(bv => bv.Id == bookingVehicleId && bv.DriverId == driverId);
 
-            if (bookingVehicle == null || bookingVehicle.Status != "InProgress") return false;
+            if (bookingVehicle == null || (bookingVehicle.Status != "InProgress" && bookingVehicle.Status != "Active")) return false;
 
             bookingVehicle.Status = "Completed";
+            bookingVehicle.ActualEnd = DateTime.UtcNow;
+
+            // Revert own car & driver back to Available
+            if (bookingVehicle.AssignmentType == "Own" || string.IsNullOrEmpty(bookingVehicle.AssignmentType))
+            {
+                if (bookingVehicle.CarId.HasValue)
+                {
+                    var car = await _context.Cars.FindAsync(bookingVehicle.CarId.Value);
+                    if (car != null) car.Status = "Available";
+                }
+                if (bookingVehicle.DriverId.HasValue)
+                {
+                    var driver = await _context.Drivers.FindAsync(bookingVehicle.DriverId.Value);
+                    if (driver != null) driver.Status = "Available";
+                }
+            }
+            
+            var booking = await _context.Bookings
+                .Include(b => b.BookingVehicles)
+                .FirstOrDefaultAsync(b => b.Id == bookingVehicle.BookingId);
+                
+            if (booking != null)
+            {
+                // Check if all other vehicles are also completed or cancelled
+                bool allFinished = booking.BookingVehicles.All(bv => bv.Status == "Completed" || bv.Status == "Cancelled");
+                if (allFinished)
+                {
+                    booking.Status = "Completed";
+                }
+            }
+
             // Update ODO or other fare details if needed on bookingVehicle/Booking
             
             await _context.SaveChangesAsync();

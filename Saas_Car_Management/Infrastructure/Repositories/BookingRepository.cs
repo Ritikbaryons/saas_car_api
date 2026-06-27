@@ -458,7 +458,7 @@ namespace Saas_Car_Management.Infrastructure.Repositories
             b.Status = "InProgress";
             foreach (var bv in b.BookingVehicles)
             {
-                bv.Status = "Active";
+                bv.Status = "InProgress";
                 bv.ActualStart = DateTime.UtcNow;
             }
 

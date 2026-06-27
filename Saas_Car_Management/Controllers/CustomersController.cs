@@ -20,7 +20,6 @@ namespace Saas_Car_Management.Controllers
         }
 
         [HttpGet]
-        [HasPermission("Booking.View")]
         public async Task<IActionResult> GetCustomers()
         {
             var customers = await _customerRepository.GetCustomersAsync(GetTenantId());
@@ -28,7 +27,6 @@ namespace Saas_Car_Management.Controllers
         }
 
         [HttpGet("{id}")]
-        [HasPermission("Booking.View")]
         public async Task<IActionResult> GetCustomer(int id)
         {
             var c = await _customerRepository.GetCustomerByIdAsync(id, GetTenantId());
@@ -37,7 +35,6 @@ namespace Saas_Car_Management.Controllers
         }
 
         [HttpPost]
-        [HasPermission("Booking.Create")]
         public async Task<IActionResult> CreateCustomer([FromBody] CreateCustomerDto dto)
         {
             var result = await _customerRepository.CreateCustomerAsync(GetTenantId(), dto);
@@ -46,7 +43,6 @@ namespace Saas_Car_Management.Controllers
         }
 
         [HttpPut("{id}")]
-        [HasPermission("Booking.Create")]
         public async Task<IActionResult> UpdateCustomer(int id, [FromBody] CreateCustomerDto dto)
         {
             var success = await _customerRepository.UpdateCustomerAsync(id, GetTenantId(), dto);
@@ -55,7 +51,6 @@ namespace Saas_Car_Management.Controllers
         }
 
         [HttpDelete("{id}")]
-        [HasPermission("Booking.Create")]
         public async Task<IActionResult> DeleteCustomer(int id)
         {
             var success = await _customerRepository.DeleteCustomerAsync(id, GetTenantId());
